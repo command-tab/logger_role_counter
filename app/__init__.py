@@ -1,5 +1,3 @@
-import os
-import urllib
 from flask import Flask
 
 # Configure Flask
@@ -10,8 +8,3 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'  # In-memory SQLite
 # Configure Flask-SQLAlchemy
 from app.models import db
 db.init_app(app)
-
-from app.models.user import User
-from app.models.organization import Organization
-from app.models.logger import Logger
-from app.models.logger_role import LoggerRole
