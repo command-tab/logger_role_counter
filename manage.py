@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import click
+from sqlalchemy import func, distinct
 from flask.cli import FlaskGroup
 from app import app, db
 from app.models.user import User
@@ -32,7 +33,7 @@ def print_org_logger_role_counts():
         db.session.commit()
 
         # Add some Organizations
-        org_names = ['Apple', 'Google', 'Microsoft']
+        org_names = ['Apple', 'Google', 'Microsoft', 'Yahoo!']
         for org_name in org_names:
             organization = Organization(name=org_name)
             db.session.add(organization)
@@ -46,6 +47,7 @@ def print_org_logger_role_counts():
             ('Sundar Pichai', 'Google'),
             ('Eric Schmidt', 'Google'),
             ('Satya Nadella', 'Microsoft'),
+            ('Marissa Mayer', 'Yahoo!'),
         ]
         for user_mapping in user_mappings:
 
@@ -75,11 +77,12 @@ def print_org_logger_role_counts():
         # Add some Logger mappings (User <-> LoggerRole)
         logger_role_mappings = [
             ('Steve Jobs', 'Owner'),
-            ('Tim Cook', 'Owner'),
-            ('Phil Schiller', 'Reporter'),
+            ('Tim Cook', 'Developer'),
+            ('Phil Schiller', 'Reporter'),  # 'Apple' Users have 3 distinct LoggerRoles
             ('Sundar Pichai', 'Owner'),
-            ('Eric Schmidt', 'Developer'),
-            ('Satya Nadella', 'Owner'),
+            ('Eric Schmidt', 'Developer'),  # 'Google' Users have 2 distinct LoggerRoles
+            ('Satya Nadella', 'Owner')  # 'Microsoft' Users have 1 distinct role
+            # Yahoo! Users have 0 distinct roles
         ]
         for logger_role_mapping in logger_role_mappings:
 
@@ -101,7 +104,15 @@ def print_org_logger_role_counts():
 
         db.session.commit()
 
-        click.echo(Logger.query.all())
+        # What I would like to do is join these two queries so that I have a count of how many different "LoggerRole" exist in each organization. Essentially I want to end up with something like:
+        # "org_1": {'logger_role_1': 2, 'logger_role_2': 5, 'logger_role_3: 7 }
+
+        # Note that outerjoin() is used to ensure that even Organizations with *no* LoggerRoles are still listed as 0.
+        # Sample output:
+        # [(u'Apple', 3), (u'Google', 2), (u'Microsoft', 1), (u'Yahoo!', 0)]
+        click.echo(
+            db.session.query(Organization.name, func.count(distinct(LoggerRole.id))).outerjoin(User).outerjoin(Logger).outerjoin(LoggerRole).group_by(Organization.id).all()
+        )
 
 if __name__ == '__main__':
     cli()
